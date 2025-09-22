@@ -1,2 +1,2 @@
 # my-html-project
-New Dashboard
+index.html
