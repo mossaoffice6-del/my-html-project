@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>نظام إدارة - العملاء، السجلات، الجلسات، الموظفين، الحسابات</title>
+
+<!-- مكتبات -->
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment-hijri@2.2.2/moment-hijri.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+:root{
+  --bg:#f3f4f6; --card:#fff; --accent:#a97c32; --accent-dark:#805d24;
+  --muted:#6b7280; --success:#10b981; --warning:#f59e0b; --danger:#ef4444;
+  --radius:12px;
+}
+*{ box-sizing:border-box; }
+body{ margin:0; font-family:Tahoma, Arial, sans-serif; background:var(--bg); color:#14232b; direction:rtl; }
+.topbar{ background:linear-gradient(90deg,var(--accent),var(--accent-dark)); color:#fff; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+.topbar h1{ margin:0; font-size:18px; }
+.nav{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.nav button{ background:rgba(255,255,255,0.12); border:none; color:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:700; }
+.nav button.active{ background:#fff; color:var(--accent); box-shadow:0 4px 10px rgba(0,0,0,0.08); }
+
+.container{ max-width:1200px; margin:18px auto; padding:0 12px 80px; }
+.panel{ margin-bottom:14px; display:none; }
+.card{ background:var(--card); border-radius:var(--radius); padding:12px; box-shadow:0 8px 24px rgba(16,24,40,0.04); margin-bottom:12px;}
+.form-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; }
+label{ display:block; margin-bottom:6px; color:var(--accent); font-weight:700; font-size:13px; }
+input[type="text"], input[type="email"], input[type="date"], input[type="time"], input[type="number"], select, textarea{
+  padding:10px; border-radius:8px; border:1px solid #e6eef5; width:100%; font-size:14px; background:#fff;
+}
+input.date-field { cursor:pointer; background:linear-gradient(90deg,#fff,#fff) no-repeat right 10px center; }
+textarea{ min-height:70px; resize:vertical; }
+.btn{ background:var(--accent); color:#fff; border:none; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:800; }
+.btn.ghost{ background:transparent; border:1px solid #e6eef5; color:var(--accent); font-weight:700; }
+.table-actions{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.search{ padding:8px 10px; border-radius:8px; border:1px solid #e6eef5; min-width:200px; }
+.main-table{ width:100%; border-collapse:collapse; margin-top:8px; font-size:14px; overflow:hidden; border-radius:8px; }
+.main-table thead th{ background:linear-gradient(90deg,var(--accent),var(--accent-dark)); color:#fff; padding:10px; text-align:center; }
+.main-table th, .main-table td{ border-bottom:1px solid #eef6fb; padding:8px 10px; text-align:center; vertical-align:middle; }
+.row-actions{ display:flex; gap:6px; justify-content:center; }
+.icon-btn{ padding:6px 8px; border-radius:8px; border:none; cursor:pointer; color:#fff; font-weight:700; }
+.icon-edit{ background:#facc15; color:#111; } .icon-delete{ background:var(--danger); } .icon-info{ background:#3b82f6; }
+.badge{ display:inline-block; padding:6px 8px; border-radius:8px; color:#fff; font-weight:700; font-size:12px; }
+.badge.green{ background:var(--success); } .badge.yellow{ background:var(--warning); color:#111; } .badge.red{ background:var(--danger); }
+.small{ font-size:12px; color:var(--muted); }
+.hijri-row{ display:flex; gap:6px; }
+.hijri-row select{ flex:1; padding:9px; border-radius:8px; border:1px solid #e6eef5; background:#fff; }
+.collapsible{ background:transparent; border:none; color:var(--accent); text-decoration:underline; cursor:pointer; font-weight:800; }
+
+.alert-yellow{ background: #fff8ec !important; } .alert-red{ background:#fff1f2 !important; }
+@media(max-width:860px){ .topbar{ padding:12px; } .form-grid{ grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); } .main-table thead th{ font-size:13px; } }
+.notification{ position:fixed; top:18px; left:50%; transform:translateX(-50%); background:var(--accent); color:#fff; padding:10px 14px; border-radius:10px; display:none; z-index:1200; box-shadow:0 6px 18px rgba(0,0,0,0.15); font-weight:700; }
+
+/* datepicker popup */
+.datepicker-popup{ position:fixed; z-index:2000; background:#fff; border:1px solid #e6eef5; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.12); padding:10px; width:320px; }
+.datepicker-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.datepicker-row select, .datepicker-row input { padding:8px; border-radius:6px; border:1px solid #e6eef5; }
+
+.date-converted{ font-size:12px; color:var(--muted); margin-top:6px; text-align:center; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>نظام إدارة - مكتب المحامي موسى النَشمي</h1>
+  <div class="nav" role="navigation" aria-label="قوائم">
+    <button id="navClients" class="nav-btn">👥 العملاء</button>
+    <button id="navRecords" class="nav-btn">📑 السجلات</button>
+    <button id="navSessions" class="nav-btn">⚖️ الجلسات</button>
+    <button id="navEmployees" class="nav-btn">👥 الموظفين</button>
+    <button id="navAccounts" class="nav-btn">💰 الحسابات</button>
+    <button id="navReports" class="nav-btn">📅 التقارير</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="notification" id="notification"></div>
+
+  <!-- CLIENTS -->
+  <section id="clientsSection" class="panel card">
+    <h2>إدارة العملاء</h2>
+
+    <div class="card form-card">
+      <div class="form-grid">
+        <div>
+          <label>رقم العميل</label>
+          <input id="client_id" type="text" placeholder="رقم العميل أو اترك فارغًا">
+        </div>
+        <div>
+          <label>اسم العميل</label>
+          <input id="client_name" type="text" placeholder="الاسم">
+        </div>
+        <div>
+          <label>نوع العميل</label>
+          <select id="client_type"><option value="">اختر</option><option>شركة</option><option>مؤسسة</option><option>جهة حكومية</option><option>فرد</option></select>
+        </div>
+        <div>
+          <label>رقم السجل</label>
+          <input id="client_registry" type="text">
+        </div>
+
+        <div>
+          <label>تاريخ الميلاد</label>
+          <input id="client_birth" class="date-field" type="text" readonly placeholder="اضغط للاختيار">
+          <div id="client_birth_converted" class="date-converted"></div>
+        </div>
+
+        <div>
+          <label>الجوال</label>
+          <input id="client_phone" type="text" placeholder="05xxxxxxxx">
+        </div>
+        <div>
+          <label>البريد الإلكتروني</label>
+          <input id="client_email" type="email">
+        </div>
+
+        <div>
+          <label>رقم الوكالة</label>
+          <input id="client_agency" type="text">
+        </div>
+        <div>
+          <label>انتهاء الوكالة</label>
+          <input id="client_agency_exp" class="date-field" type="text" readonly placeholder="اضغط للاختيار">
+          <div id="client_agency_exp_converted" class="date-converted"></div>
+        </div>
+
+        <div style="grid-column:1 / -1;">
+          <label>الوكالات الفرعية (أضف أكثر من وكالة باستخدام +)</label>
+          <div id="subAgenciesForm"></div>
+          <div style="margin-top:8px;">
+            <button id="addSubAgencyBtn" class="btn ghost">➕ إضافة وكالة فرعية</button>
+          </div>
+        </div>
+
+        <div>
+          <label>مستندات (اختياري)</label>
+          <input id="client_docs" type="file" multiple>
+        </div>
+
+        <div style="grid-column:1 / -1; display:flex; gap:8px; align-items:center;">
+          <button id="saveClientBtn" class="btn">➕ إضافة / حفظ</button>
+          <button id="clearClientBtn" class="btn ghost">🧽 مسح الحقول</button>
+          <div class="small">قم بالتعديل مباشرة من جدول العملاء (انقر على الخلية).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-actions">
+        <input id="clientSearch" type="text" placeholder="🔍 بحث باسم أو جوال..." class="search">
+        <button id="exportClientsBtn" class="btn ghost">⬇️ تصدير CSV</button>
+      </div>
+
+      <table id="clientsTable" class="main-table">
+        <thead>
+          <tr>
+            <th>م</th>
+            <th>رقم</th>
+            <th>الاسم</th>
+            <th>النوع</th>
+            <th>الجوال</th>
+            <th>الوكالة (انتهاء)</th>
+            <th>وكالات فرعية</th>
+            <th>التنبيهات</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- RECORDS -->
+  <section id="recordsSection" class="panel card" style="display:none;">
+    <h2>إدارة السجلات</h2>
+    <div class="card form-card">
+      <div class="form-grid">
+        <div><label>رقم السجل</label><input id="rec_regNum" type="text"></div>
+        <div><label>اسم المنشأة</label><input id="rec_company" type="text"></div>
+        <div><label>نوع السجل</label>
+          <select id="rec_type">
+            <option value="">اختر</option>
+            <option>تجاري</option>
+            <option>محاماة</option>
+            <option>توثيق</option>
+            <option>تسجيل عيني</option>
+            <option>امتياز تجاري</option>
+            <option>ملكية فكرية</option>
+            <option>زراعي</option>
+          </select>
+        </div>
+        <div><label>الجهة</label><input id="rec_authority" type="text"></div>
+
+        <div><label>تاريخ الإصدار</label><input id="rec_issue" class="date-field" type="text" readonly placeholder="اضغط للاختيار"><div id="rec_issue_converted" class="date-converted"></div></div>
+        <div><label>تاريخ الانتهاء</label><input id="rec_expiry" class="date-field" type="text" readonly placeholder="اضغط للاختيار"><div id="rec_expiry_converted" class="date-converted"></div></div>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button id="saveRecBtn" class="btn">➕ إضافة سجل</button>
+        <button id="clearRecBtn" class="btn ghost">🧽 مسح الحقول</button>
+        <button id="exportRecordsBtn" class="btn ghost">⬇️ تصدير CSV</button>
+        <button id="printRecordsBtn" class="btn ghost">🖨️ طباعة</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <table id="recordsTable" class="main-table">
+        <thead>
+          <tr>
+            <th>م</th>
+            <th>رقم السجل</th>
+            <th>اسم المنشأة</th>
+            <th>النوع</th>
+            <th>الجهة</th>
+            <th>تاريخ الإصدار</th>
+            <th id="recordsExpiryHeader" style="cursor:pointer">تاريخ الانتهاء ⬍</th>
+            <th>التنبيه</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SESSIONS -->
+  <section id="sessionsSection" class="panel card" style="display:none;">
+    <h2>إدارة الجلسات</h2>
+
+    <div class="card form-card">
+      <div class="form-grid">
+        <div><label>رقم القضية</label><input id="sess_case" type="text"></div>
+        <div><label>المحكمة و الدائرة</label><input id="sess_court" type="text"></div>
+
+        <div><label>تاريخ الجلسة</label><input id="sess_date" class="date-field" type="text" readonly placeholder="اضغط للاختيار"><div id="sess_date_converted" class="date-converted"></div></div>
+
+        <div><label>الساعة</label><input id="sess_time" type="time"></div>
+        <div><label>الموكل</label><select id="sess_client_select"></select></div>
+        <div><label>الخصم</label><input id="sess_opponent" type="text"></div>
+        <div><label>المحامي الموكل</label><input id="sess_lawyer" type="text"></div>
+        <div style="grid-column:1 / -1;"><label>آخر ما تم</label><textarea id="sess_last"></textarea></div>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button id="saveSessBtn" class="btn">➕ إضافة جلسة</button>
+        <button id="clearSessBtn" class="btn ghost">🧽 مسح الحقول</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-actions">
+        <input id="sessSearch" type="text" placeholder="🔍 بحث برقم القضية أو الموكل..." class="search">
+      </div>
+      <table id="sessionsTable" class="main-table">
+        <thead>
+          <tr>
+            <th>م</th><th>القضية</th><th>المحكمة</th><th>التاريخ</th><th>الساعة</th><th>الموكل</th><th>الخصم</th><th>المحامي</th><th>آخر ما تم</th><th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- EMPLOYEES -->
+  <section id="employeesSection" class="panel card" style="display:none;">
+    <h2>إدارة الموظفين</h2>
+
+    <div class="card form-card">
+      <div class="form-grid">
+        <div><label>اسم الموظف</label><input id="emp_name" type="text"></div>
+        <div><label>الجنسية</label><input id="emp_nationality" type="text"></div>
+        <div><label>رقم الهوية</label><input id="emp_idnum" type="text"></div>
+
+        <div><label>المهنة</label><input id="emp_job" type="text"></div>
+        <div><label>تاريخ المباشرة</label><input id="emp_start_date" class="date-field" type="text" readonly placeholder="اضغط للاختيار"><div id="emp_start_date_converted" class="date-converted"></div></div>
+        <div><label>آخر يوم عمل (اختياري)</label><input id="emp_last_day" class="date-field" type="text" readonly placeholder="اختياري"><div id="emp_last_day_converted" class="date-converted"></div></div>
+
+        <div><label>تاريخ الميلاد</label><input id="emp_birth" class="date-field" type="text" readonly placeholder="اضغط للاختيار"><div id="emp_birth_converted" class="date-converted"></div></div>
+        <div><label>تاريخ انتهاء الهوية</label><input id="emp_expiry" class="date-field" type="text" readonly placeholder="اضغط للاختيار"><div id="emp_expiry_converted" class="date-converted"></div></div>
+
+        <div><label>رقم الآيبان</label><input id="emp_iban" type="text"></div>
+        <div><label>عنوان السكن</label><input id="emp_address" type="text"></div>
+        <div><label>الحالة الاجتماعية</label><select id="emp_marital"><option value="">اختر</option><option>متزوج</option><option>أعزب</option><option>مطلق</option><option>أرمل</option></select></div>
+
+        <div><label>الجوال</label><input id="emp_phone" type="text"></div>
+        <div><label>البريد الإلكتروني</label><input id="emp_email" type="email"></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button id="saveEmpBtn" class="btn">➕ إضافة موظف</button>
+        <button id="clearEmpBtn" class="btn ghost">🧽 مسح الحقول</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-actions">
+        <input id="empSearch" class="search" placeholder="🔍 بحث باسم أو رقم الهوية...">
+        <button id="exportEmpBtn" class="btn ghost">⬇️ تصدير CSV</button>
+      </div>
+      <table id="employeesTable" class="main-table">
+        <thead><tr><th>م</th><th>الاسم</th><th>الجنسية</th><th>الهوية</th><th>المهنة</th><th>البدء</th><th>آخر يوم</th><th>الآيبان</th><th>العنوان</th><th>الحالة</th><th>الجوال</th><th>البريد</th><th>إجراءات</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ACCOUNTS / FINANCE -->
+  <section id="accountsSection" class="panel card" style="display:none;">
+    <h2>الحسابات - العمليات المالية</h2>
+
+    <div class="card form-card">
+      <div class="form-grid">
+        <div>
+          <label>نوع العملية</label>
+          <select id="acct_type"><option value="إيراد">إيراد</option><option value="مصروف">مصروف</option></select>
+        </div>
+        <div>
+          <label>الحالة (طريقة الدفع)</label>
+          <select id="acct_method"><option value="نقد">نقد</option><option value="حوالة بنكية">حوالة بنكية</option><option value="شيك مصرفي">شيك مصرفي</option><option value="إيداع في الحساب">إيداع في الحساب</option></select>
+        </div>
+        <div>
+          <label>البنك / الجهة المالية</label>
+          <input id="acct_bank" type="text" placeholder="اسم البنك أو الجهة">
+        </div>
+        <div>
+          <label>الوصف</label>
+          <input id="acct_desc" type="text">
+        </div>
+        <div>
+          <label>المبلغ</label>
+          <input id="acct_amount" type="number" step="0.01" min="0">
+        </div>
+
+        <div><label>التاريخ</label><input id="acct_date" class="date-field" type="text" readonly placeholder="اضغط للاختيار"><div id="acct_date_converted" class="date-converted"></div></div>
+
+        <div style="grid-column:1/-1; display:flex; gap:8px; align-items:center;">
+          <button id="saveAcctBtn" class="btn">➕ إضافة عملية</button>
+          <button id="clearAcctBtn" class="btn ghost">🧽 مسح</button>
+          <div class="small">الباحث والفلترة وأسفل الجدول الرسم البياني.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-actions">
+        <input id="acctSearch" class="search" placeholder="🔍 بحث بالوصف/البنك/المبلغ">
+        <select id="acctViewMode"><option value="daily">يومي</option><option value="weekly">أسبوعي</option><option value="monthly">شهري</option></select>
+        <button id="exportAcctBtn" class="btn ghost">⬇️ تصدير CSV</button>
+        <button id="printAcctBtn" class="btn ghost">🖨️ طباعة</button>
+      </div>
+
+      <table id="accountsTable" class="main-table">
+        <thead><tr><th>م</th><th>نوع</th><th>الوصف</th><th>المبلغ</th><th>التاريخ</th><th>الحالة</th><th>البنك/الجهة</th><th>إجراءات</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div style="margin-top:12px">
+        <canvas id="financeChart" style="max-height:320px"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORTS -->
+  <section id="reportsSection" class="panel card" style="display:none;">
+    <h2>التقارير الأسبوعية</h2>
+    <div class="card reports-card">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button id="generateReportBtn" class="btn">🔄 تحديث التقرير</button>
+        <button id="exportReportCSV" class="btn ghost">⬇️ تصدير CSV</button>
+      </div>
+
+      <div style="width:100%; display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;">
+        <div style="flex:1; min-width:280px;">
+          <h3>عملاء تنتهي وكالاتهم خلال الأسبوع</h3>
+          <table id="reportClientsTable" class="main-table"><thead><tr><th>م</th><th>العميل</th><th>الهاتف</th><th>الوكالة</th><th>انتهاء</th><th>باقي أيام</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div style="flex:1; min-width:280px;">
+          <h3>جلسات هذا الأسبوع</h3>
+          <table id="reportSessionsTable" class="main-table"><thead><tr><th>م</th><th>القضية</th><th>التاريخ</th><th>الموكل</th><th>المحكمة</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- تاريخ: نافذة الاختيار -->
+<div id="datepickerPopup" class="datepicker-popup" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <div>
+      <button id="modeGregorian" class="btn ghost" style="padding:6px 8px; margin-right:6px;">ميلادي</button>
+      <button id="modeHijri" class="btn ghost" style="padding:6px 8px;">هجري</button>
+    </div>
+    <div><button id="closeDatepicker" class="btn ghost">إغلاق</button></div>
+  </div>
+
+  <div class="datepicker-row" style="justify-content:space-between;">
+    <select id="dp_year"></select>
+    <select id="dp_month"></select>
+    <select id="dp_day"></select>
+  </div>
+
+  <div style="display:flex; gap:8px; justify-content:center; margin-top:6px;">
+    <button id="dp_save" class="btn">حفظ</button>
+    <button id="dp_clear" class="btn ghost">مسح</button>
+  </div>
+  <div id="dp_converted" class="date-converted"></div>
+</div>
+
+<script>
+/* ============================
+   بيانات من localStorage (الكيانات)
+   ============================ */
+let clients = JSON.parse(localStorage.getItem('clients') || '[]');
+let records = JSON.parse(localStorage.getItem('records') || '[]');
+let sessions = JSON.parse(localStorage.getItem('sessions') || '[]');
+let employees = JSON.parse(localStorage.getItem('employees') || '[]');
+let accounts = JSON.parse(localStorage.getItem('accounts') || '[]');
+
+function saveAll(){
+  localStorage.setItem('clients', JSON.stringify(clients));
+  localStorage.setItem('records', JSON.stringify(records));
+  localStorage.setItem('sessions', JSON.stringify(sessions));
+  localStorage.setItem('employees', JSON.stringify(employees));
+  localStorage.setItem('accounts', JSON.stringify(accounts));
+}
+
+/* ============================
+   Helpers: uid, daysBetween, export
+   ============================ */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function daysBetween(dateStr){ if(!dateStr) return null; const d=new Date(dateStr); d.setHours(0,0,0,0); const t=new Date(); t.setHours(0,0,0,0); return Math.ceil((d - t)/(1000*3600*24)); }
+function exportTableToCSV(filename, table){
+  if(!table) return;
+  const rows = Array.from(table.querySelectorAll('tr'));
+  const csv = rows.map(r => Array.from(r.querySelectorAll('th,td')).map(c => '"' + c.innerText.replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+}
+
+/* ============================
+   Datepicker (single elegant field)
+   - uses moment & moment-hijri
+   - mode: 'gregorian' or 'hijri'
+   - shows converted date below
+   ============================ */
+
+const hijriMonths = ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+const gregMonths = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+let dpMode = 'gregorian'; // default
+let dpTargetInput = null;   // target input element
+const popup = document.getElementById('datepickerPopup');
+const dpYear = document.getElementById('dp_year');
+const dpMonth = document.getElementById('dp_month');
+const dpDay = document.getElementById('dp_day');
+const dpConverted = document.getElementById('dp_converted');
+
+document.getElementById('modeGregorian').addEventListener('click', ()=> { setDpMode('gregorian'); });
+document.getElementById('modeHijri').addEventListener('click', ()=> { setDpMode('hijri'); });
+
+function setDpMode(m){
+  dpMode = m;
+  document.getElementById('modeGregorian').classList.remove('active');
+  document.getElementById('modeHijri').classList.remove('active');
+  if(m==='gregorian'){ document.getElementById('modeGregorian').classList.add('active'); populateGregorian(); }
+  else { document.getElementById('modeHijri').classList.add('active'); populateHijri(); }
+  updateDpConverted();
+}
+
+function populateGregorian(yearStart = 1950, yearEndOffset = 10){
+  dpYear.innerHTML=''; dpMonth.innerHTML=''; dpDay.innerHTML='';
+  const today = moment();
+  const start = Math.max(yearStart, today.year()-70);
+  for(let y = start; y<= today.year()+yearEndOffset; y++){ const o=document.createElement('option'); o.value=y; o.textContent=y; dpYear.appendChild(o); }
+  gregMonths.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; dpMonth.appendChild(o); });
+  for(let d=1; d<=31; d++){ const o=document.createElement('option'); o.value=d; o.textContent=d; dpDay.appendChild(o); }
+}
+
+function populateHijri(){
+  dpYear.innerHTML=''; dpMonth.innerHTML=''; dpDay.innerHTML='';
+  const currentHij = Number(moment().format('iYYYY'));
+  for(let y=currentHij-60; y<=currentHij+20; y++){ const o=document.createElement('option'); o.value=y; o.textContent=y; dpYear.appendChild(o); }
+  hijriMonths.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; dpMonth.appendChild(o); });
+  for(let d=1; d<=30; d++){ const o=document.createElement('option'); o.value=d; o.textContent=d; dpDay.appendChild(o); }
+}
+
+function openDatepickerFor(inputEl){
+  dpTargetInput = inputEl;
+  // position popup near input
+  const r = inputEl.getBoundingClientRect();
+  popup.style.display = 'block';
+  // place under input if space; else center
+  popup.style.top = (window.scrollY + r.bottom + 8) + 'px';
+  popup.style.left = Math.min(window.innerWidth - popup.offsetWidth - 10, r.left) + 'px';
+  // init mode and selects from current value if present
+  const curVal = inputEl.dataset.mode || inputEl.value || '';
+  if(inputEl.dataset.mode) setDpMode(inputEl.dataset.mode);
+  else setDpMode('gregorian');
+  // if input has value (YYYY-MM-DD), set selects
+  if(inputEl.value){
+    try{
+      if(inputEl.dataset.mode === 'hijri' || (inputEl.dataset.hijri && !inputEl.dataset.mode)){
+        // parse as greg, convert to hijri and select hijri
+        const g = moment(inputEl.value, 'YYYY-MM-DD');
+        const hy = Number(g.format('iYYYY')), hm = Number(g.format('iM')), hd = Number(g.format('iD'));
+        if(dpMode === 'hijri'){ dpYear.value = hy; dpMonth.value = hm; dpDay.value = hd; }
+        else { dpYear.value = g.year(); dpMonth.value = g.month()+1; dpDay.value = g.date(); }
+      } else {
+        const g = moment(inputEl.value, 'YYYY-MM-DD');
+        dpYear.value = g.year(); dpMonth.value = g.month()+1; dpDay.value = g.date();
+      }
+    }catch(e){}
+  } else {
+    // default select today's
+    if(dpMode==='gregorian'){ const g=moment(); dpYear.value=g.year(); dpMonth.value=g.month()+1; dpDay.value=g.date(); }
+    else { const h = moment().format('iYYYY-iM-iD').split('-'); dpYear.value=Number(h[0]); dpMonth.value=Number(h[1]); dpDay.value=Number(h[2]); }
+  }
+  updateDpConverted();
+}
+
+function updateDpConverted(){
+  if(!dpTargetInput) return;
+  const y = parseInt(dpYear.value), m = parseInt(dpMonth.value), d = parseInt(dpDay.value);
+  if(!y || !m || !d){ dpConverted.innerText=''; return; }
+  if(dpMode==='gregorian'){
+    const gStr = `${String(y).padStart(4,'0')}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const h = moment(gStr, 'YYYY-MM-DD').format('iYYYY/iM/iD');
+    dpConverted.innerText = 'هجري: ' + h.replace(/\//g,'-');
+  } else {
+    const hStr = `${y}-${m}-${d}`;
+    const g = moment(hStr, 'iYYYY-iM-iD').format('YYYY-MM-DD');
+    dpConverted.innerText = 'ميلادي: ' + g;
+  }
+}
+
+/* save / clear from datepicker */
+document.getElementById('dp_save').addEventListener('click', ()=>{
+  if(!dpTargetInput) return;
+  const y = parseInt(dpYear.value), m = parseInt(dpMonth.value), d = parseInt(dpDay.value);
+  if(!y || !m || !d){ showNotification('اختر اليوم والشهر والسنة'); return; }
+  if(dpMode==='gregorian'){
+    const gStr = `${String(y).padStart(4,'0')}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    dpTargetInput.value = gStr;
+    // store mode flag and equivalent hijri as data
+    const hij = moment(gStr, 'YYYY-MM-DD').format('iYYYY-iM-iD');
+    dpTargetInput.dataset.mode = 'gregorian';
+    dpTargetInput.dataset.hijri = hij;
+    // show converted under field (if corresponding converted div exists)
+    const conv = document.getElementById(dpTargetInput.id + '_converted');
+    if(conv) conv.innerText = 'هجري: ' + hij.replace(/-/g,'-').replace(/-/g,'-');
+  } else {
+    const hStr = `${y}-${m}-${d}`;
+    const g = moment(hStr, 'iYYYY-iM-iD').format('YYYY-MM-DD');
+    dpTargetInput.value = g;
+    dpTargetInput.dataset.mode = 'hijri';
+    dpTargetInput.dataset.hijri = hStr;
+    const conv = document.getElementById(dpTargetInput.id + '_converted');
+    if(conv) conv.innerText = 'هجري: ' + hStr;
+  }
+  popup.style.display='none';
+  dpTargetInput = null;
+  // autosave the draft form (handled by input listeners) and for entity forms call save buttons explicitly
+  showNotification('✅ تم اختيار التاريخ');
+  // trigger input event for autosave logic
+  setTimeout(()=>{ window.dispatchEvent(new Event('input')); }, 50);
+});
+
+document.getElementById('dp_clear').addEventListener('click', ()=>{
+  if(!dpTargetInput) return;
+  dpTargetInput.value = '';
+  dpTargetInput.dataset.hijri = '';
+  dpTargetInput.dataset.mode = '';
+  const conv = document.getElementById(dpTargetInput.id + '_converted');
+  if(conv) conv.innerText = '';
+  popup.style.display='none';
+  dpTargetInput = null;
+  showNotification('🧽 تم مسح التاريخ');
+});
+
+/* close */
+document.getElementById('closeDatepicker').addEventListener('click', ()=>{ popup.style.display='none'; dpTargetInput=null; });
+
+/* attach datepicker to inputs (all fields with class date-field) */
+function attachDatepickers(){
+  document.querySelectorAll('.date-field').forEach(inp=>{
+    inp.addEventListener('click', ()=> openDatepickerFor(inp));
+  });
+}
+attachDatepickers();
+
+/* click outside popup to close */
+document.addEventListener('click', function(e){
+  if(!popup.contains(e.target) && !e.target.classList.contains('date-field')){ popup.style.display='none'; dpTargetInput=null; }
+});
+/* change selects update converted preview */
+dpYear.addEventListener('change', updateDpConverted);
+dpMonth.addEventListener('change', updateDpConverted);
+dpDay.addEventListener('change', updateDpConverted);
+
+/* ============================
+   Sub-agency (clients) helper
+   ============================ */
+const subAgenciesForm = document.getElementById('subAgenciesForm');
+document.getElementById('addSubAgencyBtn').addEventListener('click', ()=> addSubAgencyForm());
+function addSubAgencyForm(num='', expiry=''){
+  const wrapper = document.createElement('div');
+  wrapper.className='sub-agency-row';
+  wrapper.style.display='flex'; wrapper.style.gap='8px'; wrapper.style.alignItems='center'; wrapper.style.marginTop='8px';
+  wrapper.innerHTML = `<input class="sub_num" type="text" placeholder="رقم الوكالة الفرعية" value="${num}"><input class="sub_exp" class="date-field" readonly type="text" placeholder="تاريخ الانتهاء" value="${expiry}"><button class="btn ghost sub_remove">🗑️</button>`;
+  subAgenciesForm.appendChild(wrapper);
+  // bind datepicker for the new .sub_exp element
+  const subExp = wrapper.querySelector('.sub_exp');
+  subExp.addEventListener('click', ()=> openDatepickerFor(subExp));
+  wrapper.querySelector('.sub_remove').addEventListener('click', ()=> { wrapper.remove(); });
+}
+
+/* ============================
+   Inline editing autosave: contenteditable
+   ============================ */
+function attachInlineEditListeners(){
+  document.querySelectorAll('.editable').forEach(cell=>{
+    cell.onblur = function(){
+      const entity = this.dataset.entity;
+      const index = Number(this.dataset.index);
+      const field = this.dataset.field;
+      const newVal = this.innerText.trim();
+      if(entity==='clients'){ clients[index][field] = newVal; saveAll(); renderClients(); renderSessions(); renderClientDropdown(); }
+      if(entity==='records'){ records[index][field] = newVal; saveAll(); renderRecords(); }
+      if(entity==='sessions'){ sessions[index][field] = newVal; saveAll(); renderSessions(); }
+      if(entity==='employees'){ employees[index][field] = newVal; saveAll(); renderEmployees(); }
+      if(entity==='accounts'){ accounts[index][field] = newVal; saveAll(); renderAccounts(); }
+      showNotification('💾 تم الحفظ تلقائياً');
+    };
+    cell.onkeydown = function(e){ if(e.key === 'Enter'){ e.preventDefault(); this.blur(); } };
+  });
+}
+
+/* ============================
+   Render & CRUD: Clients
+   ============================ */
+const clientsTableBody = document.querySelector('#clientsTable tbody');
+const clientSearch = document.getElementById('clientSearch');
+clientSearch.addEventListener('input', renderClients);
+document.getElementById('exportClientsBtn').addEventListener('click', ()=> exportTableToCSV('clients.csv', document.getElementById('clientsTable')));
+
+let editingClientIndex = null;
+
+function renderClients(){
+  clientsTableBody.innerHTML = '';
+  const q = clientSearch.value.trim().toLowerCase();
+  clients.forEach((c, idx) => {
+    const hay = `${c.name||''} ${c.phone||''} ${c.registry||''}`.toLowerCase();
+    if(q && !hay.includes(q)) return;
+    let dates=[];
+    if(c.agencyExpiry) dates.push(c.agencyExpiry);
+    if(c.subAgencies && c.subAgencies.length) c.subAgencies.forEach(s=>{ if(s.expiry) dates.push(s.expiry); });
+    let alert={level:'ok', days:null};
+    if(dates.length){
+      const arr=dates.map(d=>daysBetween(d)); const minD=Math.min(...arr); alert.days=minD; if(minD<0) alert.level='expired'; else if(minD<=30) alert.level='warning';
+    }
+    const tr=document.createElement('tr'); if(alert.level==='warning') tr.classList.add('alert-yellow'); if(alert.level==='expired') tr.classList.add('alert-red');
+    const agExpiryDisplay = c.agencyExpiry||'-';
+    const subCount = (c.subAgencies||[]).length;
+    tr.innerHTML = `
+      <td>${idx+1}</td>
+      <td contenteditable="true" class="editable" data-entity="clients" data-index="${idx}" data-field="id">${c.id||''}</td>
+      <td contenteditable="true" class="editable" data-entity="clients" data-index="${idx}" data-field="name">${c.name||''}</td>
+      <td contenteditable="true" class="editable" data-entity="clients" data-index="${idx}" data-field="type">${c.type||''}</td>
+      <td contenteditable="true" class="editable" data-entity="clients" data-index="${idx}" data-field="phone">${c.phone||''}</td>
+      <td><div contenteditable="true" class="editable" data-entity="clients" data-index="${idx}" data-field="agency">${c.agency||'-'}</div><div contenteditable="true" class="editable" data-entity="clients" data-index="${idx}" data-field="agencyExpiry">${agExpiryDisplay}</div></td>
+      <td><button class="collapsible" data-idx="${idx}">🔽 ${subCount} وكالة</button><div class="subs-detail" id="subs-${idx}" style="display:none; margin-top:8px; text-align:center;"></div></td>
+      <td>${ alert.level==='expired' ? '<span class="badge red">❌ منتهي</span>' : alert.level==='warning' ? `<span class="badge yellow">⚠️ ${alert.days} يوم</span>` : '<span class="badge green">ساري</span>' }</td>
+      <td><div class="row-actions"><button class="icon-btn icon-edit" onclick="startEditClient(${idx})">✏️</button><button class="icon-btn icon-delete" onclick="removeClient(${idx})">🗑️</button></div></td>
+    `;
+    clientsTableBody.appendChild(tr);
+    // fill subs
+    const detail = document.getElementById('subs-' + idx); detail.innerHTML = '';
+    if(c.subAgencies && c.subAgencies.length){
+      c.subAgencies.forEach((s,i)=>{
+        const days = s.expiry ? daysBetween(s.expiry) : null;
+        const note = days===null ? '' : (days<0 ? '❌ منتهي' : (days<=30 ? `⚠️ ${days} يوم` : 'ساري'));
+        const div=document.createElement('div'); div.style.display='flex'; div.style.justifyContent='center'; div.style.gap='12px'; div.innerHTML = `<div style="min-width:140px">${s.num}</div><div style="min-width:120px">${s.expiry||'-'}</div><div>${note}</div>`; detail.appendChild(div);
+      });
+    } else detail.innerHTML = '<div class="small">لا توجد وكالات فرعية</div>';
+  });
+  document.querySelectorAll('.collapsible').forEach(btn=> btn.onclick = function(){ const idx=this.dataset.idx; const el=document.getElementById('subs-'+idx); el.style.display = el.style.display==='none'?'block':'none'; });
+  attachInlineEditListeners();
+}
+
+/* Add/Edit client via form */
+document.getElementById('saveClientBtn').addEventListener('click', ()=>{
+  const idVal = document.getElementById('client_id').value.trim() || uid();
+  const subRows = Array.from(subAgenciesForm.querySelectorAll('.sub-agency-row'));
+  const subs = subRows.map(row => ({ num: row.querySelector('.sub_num')?row.querySelector('.sub_num').value.trim():'', expiry: row.querySelector('.sub_exp')?row.querySelector('.sub_exp').value||null:null })).filter(s=>s.num);
+  const clientObj = {
+    id: idVal,
+    name: document.getElementById('client_name').value.trim(),
+    type: document.getElementById('client_type').value,
+    registry: document.getElementById('client_registry').value.trim(),
+    birth: document.getElementById('client_birth').value || '',
+    phone: document.getElementById('client_phone').value.trim(),
+    email: document.getElementById('client_email').value.trim(),
+    agency: document.getElementById('client_agency').value.trim(),
+    agencyExpiry: document.getElementById('client_agency_exp').value || null,
+    subAgencies: subs,
+    docs: Array.from(document.getElementById('client_docs').files).map(f=>f.name)
+  };
+  if(!clientObj.name || !clientObj.phone){ showNotification('⚠️ الاسم والجوال مطلوبان'); return; }
+  if(editingClientIndex !== null){ clients[editingClientIndex] = clientObj; editingClientIndex = null; document.getElementById('saveClientBtn').innerText = '➕ إضافة / حفظ'; }
+  else clients.push(clientObj);
+  saveAll(); renderClients(); renderClientDropdown(); clearClientForm(); showNotification('✅ تم حفظ بيانات العميل');
+});
+
+function clearClientForm(){
+  document.getElementById('client_id').value=''; document.getElementById('client_name').value=''; document.getElementById('client_type').value=''; document.getElementById('client_registry').value=''; document.getElementById('client_birth').value=''; document.getElementById('client_birth_converted').innerText=''; document.getElementById('client_phone').value=''; document.getElementById('client_email').value=''; document.getElementById('client_agency').value=''; document.getElementById('client_agency_exp').value=''; document.getElementById('client_agency_exp_converted').innerText=''; document.getElementById('client_docs').value=''; subAgenciesForm.innerHTML=''; addSubAgencyForm(); editingClientIndex=null; document.getElementById('saveClientBtn').innerText='➕ إضافة / حفظ';
+}
+
+function startEditClient(idx){
+  const c = clients[idx];
+  editingClientIndex = idx;
+  document.getElementById('client_id').value = c.id || '';
+  document.getElementById('client_name').value = c.name || '';
+  document.getElementById('client_type').value = c.type || '';
+  document.getElementById('client_registry').value = c.registry || '';
+  document.getElementById('client_birth').value = c.birth || '';
+  if(c.birth){ document.getElementById('client_birth_converted').innerText = convertToOther(c.birth); }
+  document.getElementById('client_phone').value = c.phone || '';
+  document.getElementById('client_email').value = c.email || '';
+  document.getElementById('client_agency').value = c.agency || '';
+  document.getElementById('client_agency_exp').value = c.agencyExpiry || '';
+  if(c.agencyExpiry) document.getElementById('client_agency_exp_converted').innerText = convertToOther(c.agencyExpiry);
+  subAgenciesForm.innerHTML = '';
+  if(c.subAgencies && c.subAgencies.length) c.subAgencies.forEach(s => addSubAgencyForm(s.num, s.expiry));
+  else addSubAgencyForm();
+  document.getElementById('saveClientBtn').innerText='💾 حفظ التعديل';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function removeClient(idx){
+  if(!confirm('هل تريد حذف هذا العميل؟')) return;
+  clients.splice(idx,1); saveAll(); renderClients(); renderClientDropdown(); renderSessions(); showNotification('🗑️ تم حذف العميل');
+}
+
+/* ============================
+   Records CRUD & render
+   ============================ */
+const recordsTableBody = document.querySelector('#recordsTable tbody');
+let editingRecordIndex = null;
+let recSortAsc = true;
+
+function computeRecordAlert(rec){ if(!rec.expiry) return {level:'none'}; const d=daysBetween(rec.expiry); if(d<0) return {level:'expired', days:d}; if(d<=30) return {level:'warning', days:d}; return {level:'ok', days:d}; }
+
+function renderRecords(){
+  recordsTableBody.innerHTML=''; records.forEach((r,i)=>{
+    const alert = computeRecordAlert(r);
+    const tr=document.createElement('tr'); if(alert.level==='warning') tr.classList.add('alert-yellow'); if(alert.level==='expired') tr.classList.add('alert-red');
+    tr.innerHTML = `<td>${i+1}</td><td contenteditable="true" class="editable" data-entity="records" data-index="${i}" data-field="regNum">${r.regNum||''}</td><td contenteditable="true" class="editable" data-entity="records" data-index="${i}" data-field="company">${r.company||''}</td><td contenteditable="true" class="editable" data-entity="records" data-index="${i}" data-field="type">${r.type||''}</td><td contenteditable="true" class="editable" data-entity="records" data-index="${i}" data-field="authority">${r.authority||''}</td><td contenteditable="true" class="editable" data-entity="records" data-index="${i}" data-field="issue">${r.issue||''}</td><td contenteditable="true" class="editable" data-entity="records" data-index="${i}" data-field="expiry">${r.expiry||''}</td><td>${ alert.level==='expired' ? '<span class="badge red">❌ منتهي</span>' : alert.level==='warning' ? `<span class="badge yellow">⚠️ ${alert.days} يوم</span>` : '<span class="badge green">ساري</span>' }</td><td><div class="row-actions"><button class="icon-btn icon-edit" onclick="editRecord(${i})">✏️</button><button class="icon-btn icon-delete" onclick="deleteRecord(${i})">🗑️</button></div></td>`;
+    recordsTableBody.appendChild(tr);
+  });
+  attachInlineEditListeners();
+}
+
+document.getElementById('saveRecBtn').addEventListener('click', ()=>{
+  const rec = { regNum: document.getElementById('rec_regNum').value.trim(), company: document.getElementById('rec_company').value.trim(), type: document.getElementById('rec_type').value, authority: document.getElementById('rec_authority').value.trim(), issue: document.getElementById('rec_issue').value||'', expiry: document.getElementById('rec_expiry').value||'' };
+  if(!rec.regNum || !rec.company){ showNotification('⚠️ أدخل رقم السجل واسم المنشأة'); return; }
+  if(editingRecordIndex !== null){ records[editingRecordIndex]=rec; editingRecordIndex=null; document.getElementById('saveRecBtn').innerText='➕ إضافة سجل'; } else records.push(rec);
+  saveAll(); renderRecords(); clearRecForm(); showNotification('✅ تم حفظ السجل');
+});
+function clearRecForm(){ document.getElementById('rec_regNum').value=''; document.getElementById('rec_company').value=''; document.getElementById('rec_type').value=''; document.getElementById('rec_authority').value=''; document.getElementById('rec_issue').value=''; document.getElementById('rec_issue_converted').innerText=''; document.getElementById('rec_expiry').value=''; document.getElementById('rec_expiry_converted').innerText=''; editingRecordIndex=null; document.getElementById('saveRecBtn').innerText='➕ إضافة سجل'; }
+function editRecord(i){ const r=records[i]; document.getElementById('rec_regNum').value=r.regNum; document.getElementById('rec_company').value=r.company; document.getElementById('rec_type').value=r.type; document.getElementById('rec_authority').value=r.authority; document.getElementById('rec_issue').value=r.issue||''; document.getElementById('rec_issue_converted').innerText = r.issue?convertToOther(r.issue):''; document.getElementById('rec_expiry').value=r.expiry||''; document.getElementById('rec_expiry_converted').innerText = r.expiry?convertToOther(r.expiry):''; editingRecordIndex=i; document.getElementById('saveRecBtn').innerText='💾 حفظ التعديل'; window.scrollTo({top:0,behavior:'smooth'}); }
+function deleteRecord(i){ if(!confirm('حذف السجل نهائيًا؟')) return; records.splice(i,1); saveAll(); renderRecords(); showNotification('🗑️ تم حذف السجل'); }
+
+document.getElementById('recordsExpiryHeader').addEventListener('click', ()=>{
+  records.sort((a,b)=>{ const da=a.expiry?new Date(a.expiry):new Date(8640000000000000); const db=b.expiry?new Date(b.expiry):new Date(8640000000000000); return recSortAsc ? da-db : db-da; });
+  recSortAsc = !recSortAsc; renderRecords();
+});
+document.getElementById('exportRecordsBtn').addEventListener('click', ()=> exportTableToCSV('records.csv', document.getElementById('recordsTable')));
+document.getElementById('printRecordsBtn').addEventListener('click', ()=> window.print());
+
+/* ============================
+   Sessions CRUD
+   ============================ */
+const sessionsTableBody = document.querySelector('#sessionsTable tbody');
+let editingSessionIndex = null;
+document.getElementById('saveSessBtn').addEventListener('click', ()=>{
+  const clientId = document.getElementById('sess_client_select').value || '';
+  const clientObj = clients.find(c=>c.id==clientId);
+  const s = { caseNum: document.getElementById('sess_case').value.trim(), court: document.getElementById('sess_court').value.trim(), date: document.getElementById('sess_date').value||'', time: document.getElementById('sess_time').value||'', clientId: clientId, clientName: clientObj?clientObj.name:'', opponent: document.getElementById('sess_opponent').value.trim(), lawyer: document.getElementById('sess_lawyer').value.trim(), last: document.getElementById('sess_last').value.trim() };
+  if(!s.caseNum || !s.clientName){ if(!confirm('رقم القضية أو الموكل غير محدد. استمرار؟')) return; }
+  if(editingSessionIndex !== null){ sessions[editingSessionIndex]=s; editingSessionIndex=null; document.getElementById('saveSessBtn').innerText='➕ إضافة جلسة'; } else sessions.push(s);
+  saveAll(); renderSessions(); clearSessionForm(); showNotification('✅ تم حفظ الجلسة');
+});
+function clearSessionForm(){ document.getElementById('sess_case').value=''; document.getElementById('sess_court').value=''; document.getElementById('sess_date').value=''; document.getElementById('sess_date_converted').innerText=''; document.getElementById('sess_time').value=''; document.getElementById('sess_client_select').value = clients[0]?clients[0].id:''; document.getElementById('sess_opponent').value=''; document.getElementById('sess_lawyer').value=''; document.getElementById('sess_last').value=''; editingSessionIndex=null; document.getElementById('saveSessBtn').innerText='➕ إضافة جلسة'; }
+function renderSessions(){ renderClientDropdown(); sessionsTableBody.innerHTML=''; const q=document.getElementById('sessSearch').value.trim().toLowerCase(); sessions.forEach((s,i)=>{ const hay=`${s.caseNum} ${s.clientName}`.toLowerCase(); if(q && !hay.includes(q)) return; const tr=document.createElement('tr'); tr.innerHTML = `<td>${i+1}</td><td contenteditable="true" class="editable" data-entity="sessions" data-index="${i}" data-field="caseNum">${s.caseNum||''}</td><td contenteditable="true" class="editable" data-entity="sessions" data-index="${i}" data-field="court">${s.court||''}</td><td contenteditable="true" class="editable" data-entity="sessions" data-index="${i}" data-field="date">${s.date||''}</td><td contenteditable="true" class="editable" data-entity="sessions" data-index="${i}" data-field="time">${s.time||''}</td><td contenteditable="true" class="editable" data-entity="sessions" data-index="${i}" data-field="clientName">${s.clientName||''}</td><td contenteditable="true" class="editable" data-entity="sessions" data-index="${i}" data-field="opponent">${s.opponent||''}</td><td contenteditable="true" class="editable" data-entity="sessions" data-index="${i}" data-field="lawyer">${s.lawyer||''}</td><td contenteditable="true" class="editable" data-entity="sessions" data-index="${i}" data-field="last">${s.last||''}</td><td><div class="row-actions"><button class="icon-btn icon-edit" onclick="startEditSession(${i})">✏️</button><button class="icon-btn icon-delete" onclick="removeSession(${i})">🗑️</button></div></td>`; sessionsTableBody.appendChild(tr); }); attachInlineEditListeners(); }
+document.getElementById('sessSearch').addEventListener('input', renderSessions);
+function startEditSession(i){ const s=sessions[i]; editingSessionIndex=i; document.getElementById('sess_case').value=s.caseNum; document.getElementById('sess_court').value=s.court; document.getElementById('sess_date').value=s.date||''; document.getElementById('sess_date_converted').innerText = s.date?convertToOther(s.date):''; document.getElementById('sess_time').value=s.time||''; document.getElementById('sess_client_select').value=s.clientId||''; document.getElementById('sess_opponent').value=s.opponent||''; document.getElementById('sess_lawyer').value=s.lawyer||''; document.getElementById('sess_last').value=s.last||''; document.getElementById('saveSessBtn').innerText='💾 حفظ التعديل'; window.scrollTo({top:0,behavior:'smooth'}); }
+function removeSession(i){ if(!confirm('حذف الجلسة؟')) return; sessions.splice(i,1); saveAll(); renderSessions(); showNotification('🗑️ تم حذف الجلسة'); }
+
+/* ============================
+   Employees CRUD
+   ============================ */
+const employeesTableBody = document.querySelector('#employeesTable tbody');
+let editingEmployeeIndex = null;
+
+document.getElementById('saveEmpBtn').addEventListener('click', ()=>{
+  const emp = {
+    id: uid(),
+    name: document.getElementById('emp_name').value.trim(),
+    nationality: document.getElementById('emp_nationality').value.trim(),
+    idnum: document.getElementById('emp_idnum').value.trim(),
+    job: document.getElementById('emp_job').value.trim(),
+    start_date: document.getElementById('emp_start_date').value||'',
+    last_day: document.getElementById('emp_last_day').value||'',
+    birth: document.getElementById('emp_birth').value||'',
+    expiry: document.getElementById('emp_expiry').value||'',
+    iban: document.getElementById('emp_iban').value.trim(),
+    address: document.getElementById('emp_address').value.trim(),
+    marital: document.getElementById('emp_marital').value,
+    phone: document.getElementById('emp_phone').value.trim(),
+    email: document.getElementById('emp_email').value.trim()
+  };
+  if(!emp.name || !emp.idnum){ showNotification('⚠️ الاسم ورقم الهوية مطلوبان'); return; }
+  if(editingEmployeeIndex !== null){ employees[editingEmployeeIndex]=emp; editingEmployeeIndex=null; document.getElementById('saveEmpBtn').innerText='➕ إضافة موظف'; }
+  else employees.push(emp);
+  saveAll(); renderEmployees(); clearEmployeeForm(); showNotification('✅ تم حفظ الموظف');
+});
+
+document.getElementById('clearEmpBtn').addEventListener('click', clearEmployeeForm);
+function clearEmployeeForm(){ document.getElementById('emp_name').value=''; document.getElementById('emp_nationality').value=''; document.getElementById('emp_idnum').value=''; document.getElementById('emp_job').value=''; document.getElementById('emp_start_date').value=''; document.getElementById('emp_start_date_converted').innerText=''; document.getElementById('emp_last_day').value=''; document.getElementById('emp_last_day_converted').innerText=''; document.getElementById('emp_birth').value=''; document.getElementById('emp_birth_converted').innerText=''; document.getElementById('emp_expiry').value=''; document.getElementById('emp_expiry_converted').innerText=''; document.getElementById('emp_iban').value=''; document.getElementById('emp_address').value=''; document.getElementById('emp_marital').value=''; document.getElementById('emp_phone').value=''; document.getElementById('emp_email').value=''; editingEmployeeIndex=null; document.getElementById('saveEmpBtn').innerText='➕ إضافة موظف'; }
+
+function renderEmployees(){
+  employeesTableBody.innerHTML=''; const q=document.getElementById('empSearch').value.trim().toLowerCase();
+  employees.forEach((e,i)=>{ const hay=`${e.name} ${e.idnum}`.toLowerCase(); if(q && !hay.includes(q)) return; const days = e.expiry ? daysBetween(e.expiry) : null; let badge='<span class="badge green">ساري</span>'; if(days!==null){ if(days<0) badge='<span class="badge red">❌ منتهي</span>'; else if(days<=30) badge=`<span class="badge yellow">⚠️ ${days} يوم</span>`; } const tr=document.createElement('tr'); tr.innerHTML = `<td>${i+1}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="name">${e.name}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="nationality">${e.nationality}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="idnum">${e.idnum}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="job">${e.job||''}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="start_date">${e.start_date||''}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="last_day">${e.last_day||''}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="iban">${e.iban||''}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="address">${e.address||''}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="marital">${e.marital||''}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="phone">${e.phone||''}</td><td contenteditable="true" class="editable" data-entity="employees" data-index="${i}" data-field="email">${e.email||''}</td><td><div class="row-actions"><button class="icon-btn icon-edit" onclick="startEditEmployee(${i})">✏️</button><button class="icon-btn icon-delete" onclick="removeEmployee(${i})">🗑️</button></div></td>`; employeesTableBody.appendChild(tr); });
+  attachInlineEditListeners();
+}
+
+document.getElementById('empSearch').addEventListener('input', renderEmployees);
+
+function startEditEmployee(i){
+  const e = employees[i];
+  editingEmployeeIndex = i;
+  document.getElementById('emp_name').value = e.name || '';
+  document.getElementById('emp_nationality').value = e.nationality || '';
+  document.getElementById('emp_idnum').value = e.idnum || '';
+  document.getElementById('emp_job').value = e.job || '';
+  document.getElementById('emp_start_date').value = e.start_date || ''; if(e.start_date) document.getElementById('emp_start_date_converted').innerText = convertToOther(e.start_date);
+  document.getElementById('emp_last_day').value = e.last_day || ''; if(e.last_day) document.getElementById('emp_last_day_converted').innerText = convertToOther(e.last_day);
+  document.getElementById('emp_birth').value = e.birth || ''; if(e.birth) document.getElementById('emp_birth_converted').innerText = convertToOther(e.birth);
+  document.getElementById('emp_expiry').value = e.expiry || ''; if(e.expiry) document.getElementById('emp_expiry_converted').innerText = convertToOther(e.expiry);
+  document.getElementById('emp_iban').value = e.iban || ''; document.getElementById('emp_address').value = e.address || ''; document.getElementById('emp_marital').value = e.marital || ''; document.getElementById('emp_phone').value = e.phone || ''; document.getElementById('emp_email').value = e.email || '';
+  document.getElementById('saveEmpBtn').innerText='💾 حفظ التعديل'; window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function removeEmployee(i){ if(!confirm('حذف الموظف؟')) return; employees.splice(i,1); saveAll(); renderEmployees(); showNotification('🗑️ تم حذف الموظف'); }
+
+/* ============================
+   ACCOUNTS (FINANCE)
+   ============================ */
+const accountsTableBody = document.querySelector('#accountsTable tbody');
+let acctEditIndex = null;
+const financeCtx = document.getElementById('financeChart').getContext('2d');
+let financeChart = null;
+
+document.getElementById('saveAcctBtn').addEventListener('click', ()=>{
+  const obj = { id: uid(), type: document.getElementById('acct_type').value, method: document.getElementById('acct_method').value, bank: document.getElementById('acct_bank').value.trim(), desc: document.getElementById('acct_desc').value.trim(), amount: parseFloat(document.getElementById('acct_amount').value) || 0, date: document.getElementById('acct_date').value || '' };
+  if(!obj.desc || !obj.amount || !obj.date){ showNotification('⚠️ التاريخ، الوصف والمبلغ مطلوبان'); return; }
+  if(acctEditIndex!==null){ accounts[acctEditIndex]=obj; acctEditIndex=null; document.getElementById('saveAcctBtn').textContent='➕ إضافة عملية'; } else accounts.push(obj);
+  saveAll(); renderAccounts(); clearAcctForm(); showNotification('✅ تم حفظ العملية المالية');
+});
+document.getElementById('clearAcctBtn').addEventListener('click', clearAcctForm);
+function clearAcctForm(){ document.getElementById('acct_type').value='إيراد'; document.getElementById('acct_method').value='نقد'; document.getElementById('acct_bank').value=''; document.getElementById('acct_desc').value=''; document.getElementById('acct_amount').value=''; document.getElementById('acct_date').value=''; document.getElementById('acct_date_converted').innerText=''; }
+
+function renderAccounts(){
+  accountsTableBody.innerHTML=''; const q=document.getElementById('acctSearch').value.trim().toLowerCase();
+  accounts.forEach((a,i)=>{ const hay=`${a.desc} ${a.bank} ${a.amount}`.toLowerCase(); if(q && !hay.includes(q)) return; const tr=document.createElement('tr'); tr.innerHTML=`<td>${i+1}</td><td contenteditable="true" class="editable" data-entity="accounts" data-index="${i}" data-field="type">${a.type}</td><td contenteditable="true" class="editable" data-entity="accounts" data-index="${i}" data-field="desc">${a.desc}</td><td contenteditable="true" class="editable" data-entity="accounts" data-index="${i}" data-field="amount">${a.amount}</td><td contenteditable="true" class="editable" data-entity="accounts" data-index="${i}" data-field="date">${a.date}</td><td contenteditable="true" class="editable" data-entity="accounts" data-index="${i}" data-field="method">${a.method}</td><td contenteditable="true" class="editable" data-entity="accounts" data-index="${i}" data-field="bank">${a.bank}</td><td><div class="row-actions"><button class="icon-btn icon-edit" onclick="startEditAcct(${i})">✏️</button><button class="icon-btn icon-delete" onclick="removeAcct(${i})">🗑️</button></div></td>`; accountsTableBody.appendChild(tr); });
+  attachInlineEditListeners(); renderFinanceChart();
+}
+document.getElementById('acctSearch').addEventListener('input', renderAccounts);
+document.getElementById('exportAcctBtn').addEventListener('click', ()=> exportTableToCSV('accounts.csv', document.getElementById('accountsTable')));
+document.getElementById('printAcctBtn').addEventListener('click', ()=> printAccounts());
+
+function startEditAcct(i){ const a=accounts[i]; acctEditIndex=i; document.getElementById('acct_type').value=a.type; document.getElementById('acct_method').value=a.method; document.getElementById('acct_bank').value=a.bank; document.getElementById('acct_desc').value=a.desc; document.getElementById('acct_amount').value=a.amount; document.getElementById('acct_date').value=a.date; document.getElementById('saveAcctBtn').textContent='💾 حفظ التعديل'; window.scrollTo({top:0,behavior:'smooth'}); }
+function removeAcct(i){ if(!confirm('حذف العملية؟')) return; accounts.splice(i,1); saveAll(); renderAccounts(); showNotification('🗑️ تم حذف العملية'); }
+
+function renderFinanceChart(){
+  const mode = document.getElementById('acctViewMode').value; const groups={};
+  accounts.forEach(a=>{ if(!a.date) return; let key; const d=new Date(a.date); if(mode==='daily') key=a.date; else if(mode==='weekly'){ const start=new Date(d); const day = start.getDay(); start.setDate(start.getDate()-day); key = start.toISOString().slice(0,10); } else key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; if(!groups[key]) groups[key] = {income:0,expense:0}; if(a.type==='إيراد' || a.type==='income') groups[key].income += Number(a.amount); else groups[key].expense += Number(a.amount); });
+  const labels = Object.keys(groups).sort(); const incomes = labels.map(k=>groups[k].income); const expenses = labels.map(k=>groups[k].expense);
+  if(financeChart) financeChart.destroy();
+  financeChart = new Chart(financeCtx, { type:'bar', data:{ labels, datasets:[ {label:'إيراد', data:incomes, backgroundColor:'#10b981'}, {label:'مصروف', data:expenses, backgroundColor:'#ef4444'} ] }, options:{ responsive:true, maintainAspectRatio:false } });
+}
+
+/* print accounts formatted */
+function printAccounts(){ let html=`<html dir="rtl"><head><meta charset="utf-8"><title>طباعة العمليات المالية</title><style>body{font-family:Tahoma;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ccc;padding:8px;text-align:center;}th{background:#eee}</style></head><body><h2>العمليات المالية</h2><table><thead><tr><th>م</th><th>النوع</th><th>الوصف</th><th>المبلغ</th><th>التاريخ</th><th>الحالة</th><th>البنك/الجهة</th></tr></thead><tbody>`; accounts.forEach((a,i)=> html+=`<tr><td>${i+1}</td><td>${a.type}</td><td>${a.desc}</td><td>${a.amount}</td><td>${a.date}</td><td>${a.method}</td><td>${a.bank}</td></tr>`); html+=`</tbody></table></body></html>`; const w=window.open('','_blank'); w.document.write(html); w.document.close(); w.print(); }
+
+/* ============================
+   Reports weekly
+   ============================ */
+document.getElementById('generateReportBtn').addEventListener('click', generateWeeklyReport);
+document.getElementById('exportReportCSV').addEventListener('click', ()=> exportTableToCSV('weekly_clients.csv', document.getElementById('reportClientsTable')));
+
+function generateWeeklyReport(){
+  const clientsTable = document.querySelector('#reportClientsTable tbody'); clientsTable.innerHTML=''; const sessionsTable = document.querySelector('#reportSessionsTable tbody'); sessionsTable.innerHTML='';
+  const today=new Date(); today.setHours(0,0,0,0); const weekEnd = new Date(today.getTime() + 7*24*3600*1000);
+  clients.forEach((c,i)=>{ const expiryDates=[]; if(c.agencyExpiry) expiryDates.push(c.agencyExpiry); (c.subAgencies||[]).forEach(s=>{ if(s.expiry) expiryDates.push(s.expiry); }); expiryDates.forEach(ed=>{ const d=new Date(ed); d.setHours(0,0,0,0); if(d>=today && d<=weekEnd){ const tr=document.createElement('tr'); const days=Math.ceil((d-today)/(1000*3600*24)); tr.innerHTML=`<td>${i+1}</td><td>${c.name}</td><td>${c.phone||''}</td><td>${c.agency||'-'}</td><td>${ed}</td><td>${days}</td>`; clientsTable.appendChild(tr); } }); });
+  sessions.forEach((s,i)=>{ if(!s.date) return; const d=new Date(s.date); d.setHours(0,0,0,0); if(d>=today && d<=weekEnd){ const tr=document.createElement('tr'); tr.innerHTML=`<td>${i+1}</td><td>${s.caseNum}</td><td>${s.date}</td><td>${s.clientName||''}</td><td>${s.court||''}</td>`; sessionsTable.appendChild(tr); } });
+  showNotification('✅ تم تحديث التقرير الأسبوعي');
+}
+
+/* ============================
+   Utility functions: dropdowns, convert date display, notifications
+   ============================ */
+function renderClientDropdown(){ const sel=document.getElementById('sess_client_select'); sel.innerHTML=''; clients.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o); }); if(clients.length===0){ const o=document.createElement('option'); o.value=''; o.textContent='- لا يوجد عملاء -'; sel.appendChild(o); } }
+function showNotification(msg, timeout=3000){ const n=document.getElementById('notification'); n.innerText=msg; n.style.display='block'; clearTimeout(n.__t); n.__t=setTimeout(()=>{ n.style.display='none'; }, timeout); }
+
+/* convert selected date to other calendar for display under field */
+function convertToOther(isoDate){
+  if(!isoDate) return '';
+  try{
+    // isoDate is yyyy-mm-dd (stored always as gregorian string in our implementation)
+    const m = moment(isoDate, 'YYYY-MM-DD');
+    const hij = m.format('iYYYY-iM-iD');
+    const hijSpl = hij.split('-').join('-');
+    const greg = m.format('YYYY-MM-DD');
+    // return both? we'll return Hijri if available
+    return hijSpl;
+  } catch(e){ return ''; }
+}
+
+/* ============================
+   Attach date change listeners to show converted fields
+   - whenever a date input changes (via datepicker), update its converted div
+   - these are triggered when datepicker saved (we set dataset.hijri / dataset.mode)
+   ============================ */
+function wireConvertedDisplays(){
+  const mappings = [
+    'client_birth','client_agency_exp','rec_issue','rec_expiry','sess_date','emp_start_date','emp_last_day','emp_birth','emp_expiry','acct_date'
+  ];
+  mappings.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', ()=> {
+      const conv = document.getElementById(id + '_converted');
+      if(conv) conv.innerText = el.value ? convertToOther(el.value) : '';
+      // autosave draft
+      localStorage.setItem('dashboardDraft', JSON.stringify( gatherFormDraft() ));
+    });
+  });
+}
+wireConvertedDisplays();
+
+/* gather small draft for autosave */
+function gatherFormDraft(){
+  return {
+    clientForm: { id: document.getElementById('client_id').value, name: document.getElementById('client_name').value, phone: document.getElementById('client_phone').value },
+    recordForm: { regNum: document.getElementById('rec_regNum').value, company: document.getElementById('rec_company').value },
+    employeeForm: { name: document.getElementById('emp_name').value }
+  };
+}
+
+/* autosave draft (any input triggers saving the current draft plus we save entities when saving buttons pressed or inline edits) */
+document.addEventListener('input', function(e){
+  // save draft snapshot
+  try{ localStorage.setItem('dashboardDraft', JSON.stringify(gatherFormDraft())); }catch(e){}
+});
+
+/* ============================
+   Inline-edit helper registration (exposed)
+   ============================ */
+window.startEditClient = startEditClient;
+window.removeClient = removeClient;
+window.editRecord = editRecord;
+window.deleteRecord = deleteRecord;
+window.startEditSession = startEditSession;
+window.removeSession = removeSession;
+window.startEditEmployee = startEditEmployee;
+window.removeEmployee = removeEmployee;
+window.startEditAcct = startEditAcct;
+window.removeAcct = removeAcct;
+
+/* ============================
+   Navigation & initial render
+   ============================ */
+document.getElementById('navClients').addEventListener('click', ()=>{ showSection('clients'); renderAll(); });
+document.getElementById('navRecords').addEventListener('click', ()=>{ showSection('records'); renderAll(); });
+document.getElementById('navSessions').addEventListener('click', ()=>{ showSection('sessions'); renderAll(); });
+document.getElementById('navEmployees').addEventListener('click', ()=>{ showSection('employees'); renderAll(); });
+document.getElementById('navAccounts').addEventListener('click', ()=>{ showSection('accounts'); renderAll(); });
+document.getElementById('navReports').addEventListener('click', ()=>{ showSection('reports'); generateWeeklyReport(); });
+
+function showSection(name){
+  document.getElementById('clientsSection').style.display='none';
+  document.getElementById('recordsSection').style.display='none';
+  document.getElementById('sessionsSection').style.display='none';
+  document.getElementById('employeesSection').style.display='none';
+  document.getElementById('accountsSection').style.display='none';
+  document.getElementById('reportsSection').style.display='none';
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  if(name==='clients'){ document.getElementById('clientsSection').style.display='block'; document.getElementById('navClients').classList.add('active'); }
+  if(name==='records'){ document.getElementById('recordsSection').style.display='block'; document.getElementById('navRecords').classList.add('active'); }
+  if(name==='sessions'){ document.getElementById('sessionsSection').style.display='block'; document.getElementById('navSessions').classList.add('active'); }
+  if(name==='employees'){ document.getElementById('employeesSection').style.display='block'; document.getElementById('navEmployees').classList.add('active'); }
+  if(name==='accounts'){ document.getElementById('accountsSection').style.display='block'; document.getElementById('navAccounts').classList.add('active'); }
+  if(name==='reports'){ document.getElementById('reportsSection').style.display='block'; document.getElementById('navReports').classList.add('active'); }
+}
+
+/* initial setup */
+if(subAgenciesForm.children.length===0) addSubAgencyForm();
+renderAll();
+showSection('clients');
+
+/* re-render when storage changed in other tab */
+window.addEventListener('storage', ()=>{ clients = JSON.parse(localStorage.getItem('clients')||'[]'); records = JSON.parse(localStorage.getItem('records')||'[]'); sessions = JSON.parse(localStorage.getItem('sessions')||'[]'); employees = JSON.parse(localStorage.getItem('employees')||'[]'); accounts = JSON.parse(localStorage.getItem('accounts')||'[]'); renderAll(); });
+
+/* renderAll wrapper */
+function renderAll(){ renderClients(); renderRecords(); renderSessions(); renderEmployees(); renderAccounts(); renderClientDropdown(); attachDatepickers(); wireConvertedDisplays(); }
+
+/* small compatibility exports */
+function exportTableToCSV(filename, table){ exportTableToCSV(filename, table); }
+
+/* end of script */
+</script>
+
+</body>
+</html>
